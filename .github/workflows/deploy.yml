@@ -1,4 +1,4 @@
-name: Deploy to Heroku
+name: CI
 
 on:
   push:
@@ -23,15 +23,20 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
 
-    - name: Run tests
-      run: |
-        python manage.py migrate
-        python manage.py test
+    - name: Set up PostgreSQL
+      uses: Harmon758/postgresql-action@v1.0.0
+      with:
+        postgresql version: '13'
+        postgresql db: 'test_db'
+        postgresql user: 'test_user'
+        postgresql password: 'test_password'
 
-    - name: Deploy to Heroku
+    - name: Apply migrations
       env:
-        HEROKU_API_KEY: ${{ secrets.HEROKU_API_KEY }}
-      run: |
-        heroku git:remote --app ${{ secrets.HEROKU_APP_NAME }}
-        git push heroku main
-        heroku run python manage.py migrate
+        DATABASE_URL: postgres://test_user:test_password@localhost:5432/test_db
+      run: python manage.py migrate
+
+    - name: Run tests
+      env:
+        DATABASE_URL: postgres://test_user:test_password@localhost:5432/test_db
+      run: python manage.py test
